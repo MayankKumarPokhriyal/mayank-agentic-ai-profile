@@ -1,0 +1,155 @@
+{
+  "name": "Mayank Kumar Pokhriyal",
+  "headline": "AI Engineer & Data Scientist | LLMs, Deep Learning, NLP, MLOps",
+  "location": "Jersey City, NJ, USA",
+  "contact": {
+    "email": "mayankpokhriyal96@gmail.com",
+    "phone": "+1 (201) 492-7298"
+  },
+  "education": [
+    {
+      "degree": "MS in Artificial Intelligence",
+      "institution": "Yeshiva University, New York, USA",
+      "period": "Aug 2025 – 2027",
+      "gpa": "4.0/4.0",
+      "highlights": [
+        "Graduate research on multi-agent LLM orchestration for enterprise knowledge bases",
+        "Teaching assistant for Advanced Deep Learning (2026)",
+        "Published IEEE paper on retrieval-augmented agentic workflows"
+      ]
+    },
+    {
+      "degree": "MS in Applied AI",
+      "institution": "Stevens Institute of Technology, Hoboken, NJ",
+      "period": "Jan 2025 – Jul 2025",
+      "gpa": "3.7/4.0",
+      "highlights": [
+        "Capstone: Real-time churn prediction service for streaming platforms",
+        "Graduate assistant for Data Analytics Lab"
+      ]
+    },
+    {
+      "degree": "M.Tech in Data Science & Engineering",
+      "institution": "BITS Pilani",
+      "period": "Sep 2020 – Sep 2022",
+      "gpa": "7.5/10",
+      "highlights": [
+        "Developed multimodal stress detection pipeline for healthcare wearables",
+        "Led student consulting team for a fintech fraud detection project"
+      ]
+    },
+    {
+      "degree": "B.Tech in Computer Science & Engineering",
+      "institution": "AKTU, Lucknow",
+      "period": "Aug 2015 – Aug 2019",
+      "gpa": "7.2/10",
+      "highlights": [
+        "Final-year thesis on NLP-driven sentiment analysis for Hindi tweets",
+        "Founded coding club focused on ML competitions"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "title": "AI/ML Engineer",
+      "company": "Kyndryl (formerly IBM GTS)",
+      "location": "Bangalore, India",
+      "period": "Sep 2021 – Jan 2025",
+      "summary": "Designed, deployed, and scaled AI systems across financial services, telecom, and healthcare clients.",
+      "achievements": [
+        "Built agentic LLM workflow for insurance claims triage, reducing handling time by 43%",
+        "Productionized fraud detection models on AWS SageMaker with CI/CD pipelines and feature store governance",
+        "Led cross-functional team of 6 to deliver customer churn insights with explainable AI dashboards"
+      ],
+      "tech_stack": ["Python", "PyTorch", "TensorFlow", "AWS", "Kubeflow", "Docker", "Ollama"]
+    },
+    {
+      "title": "Data Engineer",
+      "company": "IBM",
+      "location": "Bangalore, India",
+      "period": "Aug 2019 – Sep 2021",
+      "summary": "Engineered resilient data infrastructure powering analytics and machine learning initiatives.",
+      "achievements": [
+        "Implemented real-time credit risk pipeline on Spark and Kafka with 99.9% availability",
+        "Optimized ETL jobs leading to 30% cost reduction on cloud compute",
+        "Automated data quality monitoring using Great Expectations"
+      ],
+      "tech_stack": ["PySpark", "SQL", "Airflow", "Kafka", "Azure", "Power BI"]
+    },
+    {
+      "title": "Python Developer Intern",
+      "company": "Misawite Technologies",
+      "location": "Lucknow, India",
+      "period": "Jun 2018 – Aug 2018",
+      "summary": "Created internal automation tooling and proof-of-concept analytics dashboards.",
+      "achievements": [
+        "Delivered web scraping engine to automate competitor intelligence",
+        "Implemented RESTful APIs using Flask and PostgreSQL",
+        "Introduced unit testing suite improving deployment confidence"
+      ],
+      "tech_stack": ["Python", "Flask", "PostgreSQL", "Docker"]
+    }
+  ],
+  "skills": {
+    "languages": ["Python", "SQL", "PySpark"],
+    "ml_dl": ["TensorFlow", "PyTorch", "Scikit-learn", "BERT", "LLMs"],
+    "tools": ["AWS", "Azure", "Hadoop", "Power BI", "Git", "GitHub", "Ollama", "SQLite"],
+    "domains": ["Fraud Detection", "Credit Risk", "NLP", "Sleep AI", "Churn Prediction", "Autonomous Driving"]
+  },
+  "projects": [
+    {
+      "name": "WESAD Multimodal Stress Detection",
+      "description": "Fusion of wearable sensor data using CNN-BiGRU-Attention architecture to detect stress events in real time.",
+      "impact": "Achieved 91% F1-score on multimodal benchmark and deployed on edge TPU for continuous monitoring.",
+      "keywords": ["Deep Learning", "Healthcare AI", "Edge Deployment"]
+    },
+    {
+      "name": "Netflix 2025 Churn Prediction",
+      "description": "Built survival analysis and gradient boosted pipeline to forecast subscriber churn risk with cohort insights.",
+      "impact": "Drove proactive retention campaigns with 12% uplift in retention for at-risk segments.",
+      "keywords": ["Churn", "Survival Analysis", "Explainable AI"]
+    },
+    {
+      "name": "KitchenMind AI Meal Planning App",
+      "description": "Personalized meal recommendations using nutrition constraints, LLM recipe generation, and grocery list automation.",
+      "impact": "Reached 10k beta users with 4.6/5 satisfaction by integrating local preference models.",
+      "keywords": ["Reinforcement Learning", "LLM", "Nutrition"]
+    },
+    {
+      "name": "Handwritten Digit Recognition",
+      "description": "CNN-based classifier for MNIST digits with extensive hyperparameter search and quantization-aware training.",
+      "impact": "Delivered 98% accuracy with 70% faster inference on mobile hardware.",
+      "keywords": ["Computer Vision", "Optimization"]
+    },
+    {
+      "name": "NeuroNap Sleep Optimizer",
+      "description": "Agentic workflow that prescribes sleep hygiene plans using wearable, calendar, and environment sensors.",
+      "impact": "Improved participant sleep efficiency by 18% in pilot study.",
+      "keywords": ["Agentic AI", "Wearables", "Time-Series"]
+    },
+    {
+      "name": "NLP Sentiment Engine",
+      "description": "Transformer-based sentiment analysis engine supporting multilingual corpora with 92% F1-score.",
+      "impact": "Enabled telecom client to automate customer feedback triage with NLU insights.",
+      "keywords": ["NLP", "Transformers"]
+    },
+    {
+      "name": "Autonomous Driving RL in Carla",
+      "description": "Reinforcement learning agents trained in CARLA simulator focusing on safe navigation and sensor fusion.",
+      "impact": "Reduced collision rate by 37% compared to baseline policy and integrated fail-safe planner.",
+      "keywords": ["Reinforcement Learning", "Simulation", "Autonomous Driving"]
+    }
+  ],
+  "job_preferences": {
+    "roles": ["AI Engineer", "Machine Learning Engineer", "Agentic AI Engineer"],
+    "locations": ["New York City, USA", "New Jersey, USA", "Remote"],
+    "visa": "F-1 (2025–2030)",
+    "salary_expectation": "$180,000 – $300,000"
+  },
+  "links": {
+    "github": "https://github.com/mayankkumarpokhriyal",
+    "linkedin": "https://linkedin.com/in/mayank-kumar-pokhriyal",
+    "kaggle": "https://kaggle.com/mayankkumarpokhriyal",
+    "credly": "https://www.credly.com/users/mayank-kumar-pokhriyal/badges"
+  }
+}
