@@ -56,11 +56,19 @@ def run_agent(user_message: str, chat_history: List[Dict[str, str]]) -> Dict[str
             continue
 
         if parsed["action"] == "respond":
+            clean_response = parsed.get("final") or assistant_content
+
+            #  ABSOLUTE CLEANUP: Remove any leftover JSON-like tool formatting
+            if isinstance(clean_response, str):
+                if "{" in clean_response and "}" in clean_response:
+                    # Keep only the last natural paragraph
+                    clean_response = clean_response.split("}")[-1].strip()
+
             return {
-                "response": parsed["final"] or assistant_content,
+                "response": clean_response,
                 "lead_logged": lead_logged,
                 "lead_payload": lead_payload,
-            }
+}
 
     fallback = "I want to make sure I get that right. Could you please rephrase the question?"
     return {"response": fallback, "lead_logged": lead_logged, "lead_payload": lead_payload}
