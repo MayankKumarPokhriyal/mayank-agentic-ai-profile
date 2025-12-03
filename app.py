@@ -39,14 +39,14 @@ if prompt:
 
         if agent_result.get("lead_logged"):
             st.session_state["leads"].append(agent_result.get("lead_payload", {}))
-            st.sidebar.success("Recruiter lead captured securely.")
-    except Exception as exc:  # noqa: BLE001 - show a friendly message to the user
+            st.sidebar.success("Recruiter lead captured and saved locally.")
+    except Exception as exc:  # noqa: BLE001
         error_message = (
-            "I ran into an issue responding just now. Please ensure the backend services are running "
-            "(Ollama and Google Sheets credentials) and try again."
+            "I ran into an issue responding just now. "
+            "Please make sure the Ollama server is running and try again."
         )
         st.error(error_message)
-        st.session_state["messages"].pop()  # remove user turn if we failed to reply
+        st.session_state["messages"].pop()
         st.session_state.setdefault("errors", []).append(str(exc))
 
 with st.sidebar.expander("Latest Recruiter Lead", expanded=False):

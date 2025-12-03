@@ -1,175 +1,213 @@
-"""Conversational agent orchestrating Ollama-powered reasoning and tool use."""
+"""Conversational agent orchestrating Ollama-powered reasoning and local tools."""
 from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import ollama
 
 from tools import get_profile_section, get_project_details, log_recruiter_lead
 
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3")
-MAX_LOOPS = 5
+
 SYSTEM_PROMPT = (
-    "You are Mayank Kumar Pokhriyal, an AI Engineer & Data Scientist. "
-    "Speak warmly in the first person, grounded strictly in the structured data available via tools. "
-    "Never fabricate details. "
-    "You have access to tools: "
-    "get_profile_section(section_name:str), get_project_details(project_name:str), "
-    "log_recruiter_lead(recruiter_name:str, company:str, role:str, contact:str, notes:str). "
-    "Whenever a user questions skills, education, experience, projects, or preferences, "
-    "call the appropriate tool before responding unless already provided in the current turn. "
-    "Detect recruiter intent (interest in hiring, interview, referrals). If detected, extract "
-    "recruiter_name, company, role, contact, and notes. Only call log_recruiter_lead after you have "
-    "those fields; otherwise, ask respectful follow-up questions to gather them. "
-    "After a successful log_recruiter_lead call, thank the recruiter and confirm receipt. "
-    "All outputs must be a single JSON object with keys: thought, action, action_input, final. "
-    "If action is 'tool', set action_input to the arguments (JSON object) and leave final empty. "
-    "If action is 'respond', action_input must be null and final must contain the conversational reply."
+    "You are Mayank Kumar Pokhriyal, an AI Engineer & Data Scientist.\n"
+    "You speak warmly in the first person and represent my real professional profile.\n"
+    "You must stay truthful and consistent with the following structured data:\n"
+    "- Education, experience, skills, projects, job preferences, and links.\n"
+    "If you don't know something from the profile, say so honestly.\n"
+    "Do NOT output JSON, brackets, or tool instructions. Speak like a human.\n"
 )
 
 
 def run_agent(user_message: str, chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
-    """Main entry point invoked by the Streamlit UI."""
-    messages = _build_message_stack(chat_history)
-    messages.append({"role": "user", "content": user_message})
+    """
+    Main entry point invoked by the Streamlit UI.
 
-    lead_logged = False
-    lead_payload: Optional[Dict[str, Any]] = None
+    - Uses Ollama to answer general questions
+    - Detects recruiter intent and logs leads locally (CSV) as an autonomous task
+    """
+    # First: check if this looks like a recruiter message
+    if _looks_like_recruiter_message(user_message):
+        lead, extracted = _extract_recruiter_lead(user_message)
+        lead_logged = False
+        lead_payload: Optional[Dict[str, Any]] = None
 
-    for _ in range(MAX_LOOPS):
-        response = _call_model(messages)
-        assistant_content = response.get("message", {}).get("content", "")
-        messages.append({"role": "assistant", "content": assistant_content})
-
-        parsed = _parse_agent_action(assistant_content)
-        if parsed["action"] == "tool":
-            tool_name = parsed["tool_name"]
-            tool_input = parsed["tool_input"] or {}
-            tool_result, tool_meta = _invoke_tool(tool_name, tool_input)
-            if tool_name == "log_recruiter_lead" and tool_meta.get("status") == "success":
+        if lead and _has_minimum_lead_fields(lead):
+            try:
+                log_result = log_recruiter_lead(lead)
                 lead_logged = True
-                lead_payload = {**tool_input, **tool_meta}
-            tool_message = json.dumps({"tool": tool_name, "result": tool_result}, ensure_ascii=False)
-            messages.append({"role": "tool", "content": tool_message, "name": tool_name})
-            continue
+                lead_payload = {**lead, **log_result}
+                reply = (
+                    "Thank you for reaching out about this opportunity.\n\n"
+                    f"I've recorded your details as:\n"
+                    f"- Name: {lead.get('recruiter_name')}\n"
+                    f"- Company: {lead.get('company')}\n"
+                    f"- Role: {lead.get('role')}\n"
+                    f"- Contact: {lead.get('contact')}\n"
+                    f"- Notes: {lead.get('notes', '')}\n\n"
+                    "I'll review this role and get back to you as soon as possible."
+                )
+                return {
+                    "response": reply,
+                    "lead_logged": lead_logged,
+                    "lead_payload": lead_payload,
+                }
+            except Exception:
+                # If logging fails, still respond gracefully
+                reply = (
+                    "Thanks for your interest and for sharing your details. "
+                    "I attempted to record your information but ran into an internal logging issue. "
+                    "You can also share your details via email at mayankpokhriyal96@gmail.com."
+                )
+                return {
+                    "response": reply,
+                    "lead_logged": False,
+                    "lead_payload": None,
+                }
 
-        if parsed["action"] == "respond":
-            clean_response = parsed.get("final") or assistant_content
+        # Not enough info: ask a follow-up
+        reply = (
+            "Thanks for reaching out about a potential opportunity!\n\n"
+            "To properly record this, could you please share:\n"
+            "- Your name\n"
+            "- Company\n"
+            "- Role you're hiring for\n"
+            "- Best contact email or phone\n"
+        )
+        return {
+            "response": reply,
+            "lead_logged": False,
+            "lead_payload": None,
+        }
 
-            #  ABSOLUTE CLEANUP: Remove any leftover JSON-like tool formatting
-            if isinstance(clean_response, str):
-                if "{" in clean_response and "}" in clean_response:
-                    # Keep only the last natural paragraph
-                    clean_response = clean_response.split("}")[-1].strip()
-
-            return {
-                "response": clean_response,
-                "lead_logged": lead_logged,
-                "lead_payload": lead_payload,
-}
-
-    fallback = "I want to make sure I get that right. Could you please rephrase the question?"
-    return {"response": fallback, "lead_logged": lead_logged, "lead_payload": lead_payload}
+    # Normal profile / Q&A mode
+    answer = _answer_with_profile(user_message, chat_history)
+    return {
+        "response": answer,
+        "lead_logged": False,
+        "lead_payload": None,
+    }
 
 
-def _build_message_stack(history: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+def _answer_with_profile(user_message: str, history: List[Dict[str, str]]) -> str:
+    """
+    Use Ollama to answer, while injecting structured profile snippets
+    relevant to the question (skills, education, experience, projects).
+    """
+    profile_snippets = _build_profile_context(user_message)
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT + "\n" + profile_snippets}]
     for msg in history:
         if msg["role"] in {"user", "assistant"}:
             messages.append({"role": msg["role"], "content": msg["content"]})
-    return messages
-
-
-def _call_model(messages: List[Dict[str, str]]) -> Dict[str, Any]:
-    try:
-        return ollama.chat(model=MODEL_NAME, messages=messages)
-    except Exception as exc:  # noqa: BLE001 - surface detailed failure upstream
-        raise RuntimeError(
-            "Failed to communicate with the local Ollama model. "
-            "Ensure Ollama is running and the model is pulled."
-        ) from exc
-
-
-def _parse_agent_action(content: str) -> Dict[str, Any]:
-    json_block = _extract_json_block(content)
-    if not json_block:
-        return {"action": "respond", "final": content, "tool_name": None, "tool_input": None}
+    messages.append({"role": "user", "content": user_message})
 
     try:
-        payload = json.loads(json_block)
-    except json.JSONDecodeError:
-        return {"action": "respond", "final": content, "tool_name": None, "tool_input": None}
-
-    action = payload.get("action", "respond")
-    if action == "tool":
-        return {
-            "action": "tool",
-            "tool_name": payload.get("tool_name"),
-            "tool_input": payload.get("action_input"),
-            "final": payload.get("final"),
-        }
-    return {
-        "action": "respond",
-        "tool_name": None,
-        "tool_input": None,
-        "final": payload.get("final", content),
-    }
+        resp = ollama.chat(model=MODEL_NAME, messages=messages)
+        content = resp.get("message", {}).get("content", "").strip()
+        if not content:
+            return "I heard your question, but I'm not sure how to answer that. Could you rephrase?"
+        return content
+    except Exception:
+        return (
+            "I ran into an issue talking to my local AI engine (Ollama). "
+            "Please make sure the Ollama server is running and the model is available."
+        )
 
 
-def _extract_json_block(text: str) -> Optional[str]:
-    text = text.strip()
-    if not text:
-        return None
-    if text.startswith("{") and text.endswith("}"):
-        return text
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        candidate = text[start : end + 1]
-        braces = 0
-        for char in candidate:
-            if char == "{":
-                braces += 1
-            elif char == "}":
-                braces -= 1
-            if braces < 0:
-                return None
-        if braces == 0:
-            return candidate
-    return None
+def _build_profile_context(user_message: str) -> str:
+    """Builds a small textual context from profile.json based on the question type."""
+    lower = user_message.lower()
+    parts: List[str] = []
+
+    if any(k in lower for k in ["education", "degree", "university", "college"]):
+        edu = get_profile_section("education")
+        if edu:
+            edu_lines = [
+                f"- {e.get('degree')} at {e.get('institution')} ({e.get('period')})"
+                for e in edu
+            ]
+            parts.append("Education:\n" + "\n".join(edu_lines))
+
+    if any(k in lower for k in ["experience", "work", "job", "roles", "kyndryl", "ibm"]):
+        exp = get_profile_section("experience")
+        if exp:
+            exp_lines = [
+                f"- {e.get('title')} at {e.get('company')} ({e.get('period')})"
+                for e in exp
+            ]
+            parts.append("Experience:\n" + "\n".join(exp_lines))
+
+    if any(k in lower for k in ["skill", "stack", "tech", "tools"]):
+        skills = get_profile_section("skills")
+        if skills:
+            parts.append(
+                "Skills:\n"
+                f"- Languages: {', '.join(skills.get('languages', []))}\n"
+                f"- ML/DL: {', '.join(skills.get('ml_dl', []))}\n"
+                f"- Tools: {', '.join(skills.get('tools', []))}\n"
+                f"- Domains: {', '.join(skills.get('domains', []))}"
+            )
+
+    if "project" in lower:
+        projs = get_profile_section("projects")
+        if projs:
+            proj_lines = [f"- {p.get('name')}: {p.get('description')}" for p in projs[:5]]
+            parts.append("Projects (subset):\n" + "\n".join(proj_lines))
+
+    return "\n\n".join(parts)
 
 
-def _invoke_tool(name: str, tool_input: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
-    tool_map = {
-        "get_profile_section": _run_get_profile_section,
-        "get_project_details": _run_get_project_details,
-        "log_recruiter_lead": _run_log_recruiter_lead,
-    }
-    if name not in tool_map:
-        raise ValueError(f"Unknown tool requested: {name}")
-    return tool_map[name](tool_input)
+# -----------------------------
+# Recruiter detection & extraction
+# -----------------------------
+
+def _looks_like_recruiter_message(text: str) -> bool:
+    """Heuristic to detect recruiter / hiring intent."""
+    lower = text.lower()
+    return any(k in lower for k in ["hiring", "recruiter", "role", "position", "job", "opening"]) and any(
+        k in lower for k in ["email", "@", "contact", "reach", "phone"]
+    )
 
 
-def _run_get_profile_section(tool_input: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
-    section = tool_input.get("section_name") if isinstance(tool_input, dict) else None
-    if not section:
-        raise ValueError("section_name is required for get_profile_section")
-    data = get_profile_section(section)
-    return data, {"status": "success"}
+def _extract_recruiter_lead(text: str) -> (Optional[Dict[str, Any]], str):
+    """
+    Use a small LLM prompt to extract recruiter lead fields from a free-form message.
+
+    Returns (lead_dict, raw_response_text).
+    """
+    extraction_system = (
+        "You are an information extraction assistant.\n"
+        "Given a message from a recruiter, extract the following fields and return ONLY valid JSON:\n"
+        "{\n"
+        '  "recruiter_name": "...",\n'
+        '  "company": "...",\n'
+        '  "role": "...",\n'
+        '  "contact": "...",\n'
+        '  "notes": "..." \n'
+        "}\n"
+        "If you can't find a field, set it to an empty string. Do not include any explanation or extra text."
+    )
+
+    try:
+        resp = ollama.chat(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": extraction_system},
+                {"role": "user", "content": text},
+            ],
+        )
+        content = resp.get("message", {}).get("content", "").strip()
+        lead = json.loads(content)
+        return lead, content
+    except Exception:
+        return None, ""
 
 
-def _run_get_project_details(tool_input: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
-    project = tool_input.get("project_name") if isinstance(tool_input, dict) else None
-    if not project:
-        raise ValueError("project_name is required for get_project_details")
-    data = get_project_details(project)
-    return data, {"status": "success"}
-
-
-def _run_log_recruiter_lead(tool_input: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
-    if not isinstance(tool_input, dict):
-        raise ValueError("action_input must be an object for log_recruiter_lead")
-    result = log_recruiter_lead(tool_input)
-    return result, result
+def _has_minimum_lead_fields(lead: Dict[str, Any]) -> bool:
+    """Check if we have enough fields to log a recruiter."""
+    if not lead:
+        return False
+    return bool(lead.get("recruiter_name") and lead.get("company") and lead.get("role") and lead.get("contact"))
